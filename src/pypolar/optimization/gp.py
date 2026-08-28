@@ -1,6 +1,7 @@
 """Gaussian process modelling of decoupled objectives, on BoTorch."""
 # TODO: clean up these comments in this file.
 from dataclasses import dataclass
+from typing import Callable
 
 import numpy as np
 import torch
@@ -128,7 +129,8 @@ def build_botorch_gp(
     noise            : 'NoiseModel | float | None',
     signal_var       : float,
     length_scale     : float,
-    min_length_scale : float | None = None
+    min_length_scale : float | None = None,
+    kernel_wrap_fn   : Callable = None
 ) -> SingleTaskGP:
     """The one `SingleTaskGP` configuration the package uses.
 
@@ -149,17 +151,32 @@ def build_botorch_gp(
     train_Y = torch.as_tensor(values, dtype=DTYPE).reshape(-1, 1)
     noise   = NoiseModel.coerce(noise)
 
-    prior_covar = ScaleKernel(RBFKernel(
-        ard_num_dims           = train_X.shape[-1],
-        lengthscale_constraint = None if min_length_scale is None
-                                 else GreaterThan(min_length_scale)
-    )).to(DTYPE)
-    if min_length_scale is not None:
-        # a GreaterThan cannot represent its own edge, so start strictly inside.
-        # elementwise, since length_scale may be one per action dimension
-        length_scale = np.maximum(length_scale, 1.5 * min_length_scale)
-    prior_covar.base_kernel.lengthscale = torch.tensor(length_scale, dtype=DTYPE)
-    prior_covar.outputscale = torch.tensor(signal_var, dtype=DTYPE)
+    if(kernel_wrap_fn):
+        prior_covar = kernel_wrap_fn(ScaleKernel(RBFKernel(
+            ard_num_dims           = train_X.shape[-1],
+            lengthscale_constraint = None if min_length_scale is None
+                                    else GreaterThan(min_length_scale)
+        ))).to(DTYPE)
+        if min_length_scale is not None:
+            # a GreaterThan cannot represent its own edge, so start strictly inside.
+            # elementwise, since length_scale may be one per action dimension
+            length_scale = np.maximum(length_scale, 1.5 * min_length_scale)
+        # TODO: There must be a better way to handle the "hidden" field of base_kernel's length scale
+        prior_covar.base_kernel.base_kernel.lengthscale = torch.tensor(length_scale, dtype=DTYPE)
+        prior_covar.base_kernel.outputscale = torch.tensor(signal_var, dtype=DTYPE)
+    else:
+        prior_covar = ScaleKernel(RBFKernel(
+            ard_num_dims           = train_X.shape[-1],
+            lengthscale_constraint = None if min_length_scale is None
+                                    else GreaterThan(min_length_scale)
+        )).to(DTYPE)
+
+        if min_length_scale is not None:
+            # a GreaterThan cannot represent its own edge, so start strictly inside.
+            # elementwise, since length_scale may be one per action dimension
+            length_scale = np.maximum(length_scale, 1.5 * min_length_scale)
+        prior_covar.base_kernel.lengthscale = torch.tensor(length_scale, dtype=DTYPE)
+        prior_covar.outputscale = torch.tensor(signal_var, dtype=DTYPE)
 
     # one point has no sample standard deviation, so fall back to 1 rather than
     # propagate a NaN into the likelihood
@@ -281,7 +298,7 @@ class BoTorchGP:
 
     def __init__(self, objective: Objective, noise, fit_hyperparameters=True,
                  length_scale=LENGTH_SCALE, signal_var=SIGNAL_VAR,
-                 min_length_scale=None):
+                 min_length_scale=None, kernel_wrap_fn=None):
         """
         Args:
             objective: the measurements to condition on.
@@ -293,6 +310,8 @@ class BoTorchGP:
             length_scale: starting ARD lengthscale, in the normalized frame.
             signal_var: starting ScaleKernel outputscale.
             min_length_scale: lower bound on every lengthscale, or None.
+            kernel_wrap_fn: A function taking in a kernel and returning another.
+                Used if the default RBF kernel needs to  be modified externally.
         """
         self.noise = NoiseModel.coerce(noise)
         if self.noise.is_fitted and not fit_hyperparameters:
@@ -302,6 +321,7 @@ class BoTorchGP:
         self.length_scale     = length_scale
         self.signal_var       = signal_var
         self.min_length_scale = min_length_scale
+        self.kernel_wrap_fn = kernel_wrap_fn
         self.update_feedback(objective)
         
     def update_feedback(self, objective: Objective):
@@ -320,7 +340,8 @@ class BoTorchGP:
             noise            = self.noise,
             signal_var       = self.signal_var,
             length_scale     = self.length_scale,
-            min_length_scale = self.min_length_scale
+            min_length_scale = self.min_length_scale,
+            kernel_wrap_fn   = self.kernel_wrap_fn
         ).eval()
 
         if self.fit_hyperparameters:
@@ -437,7 +458,8 @@ class DecoupledMOGP:
 
     def __init__(self, objectives: DecoupledObjectives, fit_hyperparameters=True,
                  noise=NOISE_STD, length_scale=LENGTH_SCALE,
-                 signal_var=SIGNAL_VAR, min_length_scale=None):
+                 signal_var=SIGNAL_VAR, min_length_scale=None,
+                 kernel_wrap_fn=None):
         """
         Args:
             objectives: the measurements to condition on.
@@ -450,6 +472,8 @@ class DecoupledMOGP:
             length_scale: starting ARD lengthscale, in the normalized frame.
             signal_var: starting ScaleKernel outputscale.
             min_length_scale: lower bound on every lengthscale, or None.
+            kernel_wrap_fn: A function taking in a kernel and returning another.
+                Used if the default RBF kernel needs to  be modified externally.
         """
         self.noise = NoiseModel.coerce(noise)
         if self.noise.is_fitted and not fit_hyperparameters:
@@ -459,6 +483,7 @@ class DecoupledMOGP:
         self.length_scale     = length_scale
         self.signal_var       = signal_var
         self.min_length_scale = min_length_scale
+        self.kernel_wrap_fn   = kernel_wrap_fn
         self.update_feedback(objectives)
 
     def update_feedback(self, objectives: DecoupledObjectives):
@@ -478,7 +503,8 @@ class DecoupledMOGP:
                 noise            = self.noise,
                 signal_var       = self.signal_var,
                 length_scale     = self.length_scale,
-                min_length_scale = self.min_length_scale
+                min_length_scale = self.min_length_scale,
+                kernel_wrap_fn   = self.kernel_wrap_fn,
             )
             for i in range(len(objectives))
         ]).eval()
