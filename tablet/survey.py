@@ -1,4 +1,4 @@
-"""iPad comfort survey: a 1 - 5 scale that opens one question at a time.
+"""iPad push-intensity survey: a 1 - 5 scale that opens one question at a time.
 
 Run this on the external computer, then open the printed URL in Safari on the
 iPad. The page is greyed out and untouchable until `ask` opens a question; from

@@ -1,4 +1,4 @@
-"""iPad preference slider: one continuous Efficiency <-> Comfort choice.
+"""iPad preference slider: one continuous Efficiency <-> Push Intensity choice.
 
 Run this on the external computer, then open the printed URL in Safari on the
 iPad. The slider is always live: drag it anywhere, hit Send, and the index it
@@ -14,7 +14,7 @@ Usage:
     p.wait_for_ipad()
     p.serve_forever()      # each Send -> Exo.send(action_for(idx))
 
-The index is 0 - 100, 0 at the Efficiency end and 100 at the Comfort end, and
+The index is 0 - 100, 0 at the Efficiency end and 100 at the Push Intensity end, and
 `action_for` blends the two endpoint actions by it.
 
 Two servers run in daemon threads: HTTP serves this directory, and a websocket
@@ -41,7 +41,7 @@ WS_PORT   = 8766
 
 PAGE = 'preference.html'
 
-LABELS = ('Efficiency', 'Comfort')      # the slider's low and high ends
+LABELS = ('Efficiency', 'Push Intensity')      # the slider's low and high ends
 
 EFF_ACTION = np.array([-2.0,  1.0, 0.5])    # action at index 0
 COM_ACTION = np.array([ 3.0, -1.5, 2.0])    # action at index 100
@@ -79,7 +79,7 @@ class _PageHandler(http.server.SimpleHTTPRequestHandler):
 
 
 class Preference:
-    """A continuous Efficiency <-> Comfort slider on an iPad.
+    """A continuous Efficiency <-> Push Intensity slider on an iPad.
 
     Args:
         device: what a submitted action is sent to.

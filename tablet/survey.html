@@ -148,41 +148,32 @@
 
   .scale { position: relative; }
 
-  /* faces above the track, numbers below; both pinned to thumb centres */
+  /* the question the rating answers, above the scale */
+  .question {
+    font-size: 21px;
+    line-height: 1.3;
+    margin-bottom: 14px;
+  }
 
-  .faces, .ticks { position: relative; }
-  .faces { height: 58px; }
-  .ticks { height: 26px; }
+  /* numbers below the track, pinned to thumb centres */
 
-  .faces > *, .ticks > * {
+  .ticks { position: relative; height: 26px; }
+
+  .ticks > * {
     position: absolute;
     transform: translateX(-50%);
     transition: color .15s, opacity .15s;
   }
 
-  .face {
-    top: 0;
-    width: 46px; height: 46px;
+  /* what the two ends of the scale mean */
+  .ends {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
     color: var(--ink-dim);
-    opacity: .5;
-    cursor: pointer;
-  }
-
-  .face svg {
-    width: 100%; height: 100%;
-    display: block;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2.4;
-    stroke-linecap: round;
-  }
-
-  .face svg .eye { fill: currentColor; stroke: none; }
-
-  .face.on {
-    color: var(--signal);
-    opacity: 1;
-    transform: translateX(-50%) scale(1.18);
+    margin-top: 2px;
   }
 
   .tick {
@@ -270,7 +261,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .timer, .faces > *, .ticks > * { transition: none; }
+    .timer, .ticks > * { transition: none; }
   }
 </style>
 </head>
@@ -287,14 +278,15 @@
 
   <div class="control">
     <div class="again" id="again" hidden>Want to change your answer?</div>
+    <div class="question">What is the push intensity of the exoskeleton?</div>
     <div class="row">
-      <span class="label">Comfort</span>
+      <span class="label">Push Intensity</span>
       <span class="readout" id="readout">&ndash;</span>
     </div>
     <div class="scale" id="scale">
-      <div class="faces" id="faces"></div>
       <input type="range" id="slider" min="1" max="5" step="1" value="3">
       <div class="ticks" id="ticks"></div>
+      <div class="ends"><span>Low Intensity</span><span>High Intensity</span></div>
     </div>
     <button class="send" id="send" type="button" disabled>Submit</button>
   </div>
@@ -307,7 +299,6 @@
   const status  = document.getElementById('status');
   const statusText = document.getElementById('statusText');
   const sendBtn = document.getElementById('send');
-  const facesRow = document.getElementById('faces');
   const ticksRow = document.getElementById('ticks');
   const timer   = document.getElementById('timer');
   const clock   = document.getElementById('clock');
@@ -323,39 +314,13 @@
   let deadline = null;       // performance.now() the question closes at
   let tick = null;
 
-  // ---- faces ---------------------------------------------------------------
-  // Mouth curves only; everything else is shared. 1 frowns, 5 smiles.
-
-  const MOUTH = {
-    1: 'M15 34 Q24 25 33 34',   // frown
-    2: 'M15 33 Q24 28 33 33',
-    3: 'M15 31 H33',            // flat
-    4: 'M15 29 Q24 34 33 29',
-    5: 'M15 28 Q24 37 33 28',   // smile
-  };
-
-  const faceSVG = v => `
-    <svg viewBox="0 0 48 48" aria-hidden="true">
-      <circle cx="24" cy="24" r="21"></circle>
-      <circle class="eye" cx="17" cy="19" r="2.4"></circle>
-      <circle class="eye" cx="31" cy="19" r="2.4"></circle>
-      <path d="${MOUTH[v]}"></path>
-    </svg>`;
-
-  // Thumb centre for step v, so faces and numbers line up with the handle.
+  // ---- the scale -----------------------------------------------------------
+  // Thumb centre for step v, so the numbers line up with the handle.
   const pos = v => `calc(var(--thumb) / 2 + ${(v - 1) / 4} * (100% - var(--thumb)))`;
 
-  const faceEls = {}, tickEls = {};
+  const tickEls = {};
 
   for (const v of STEPS) {
-    const f = document.createElement('div');
-    f.className = 'face';
-    f.style.left = pos(v);
-    f.innerHTML = faceSVG(v);
-    f.addEventListener('click', () => select(v));
-    facesRow.appendChild(f);
-    faceEls[v] = f;
-
     const t = document.createElement('div');
     t.className = 'tick';
     t.style.left = pos(v);
@@ -379,7 +344,6 @@
     slider.style.setProperty('--fill', chosen ? ((v - 1) / 4 * 100) + '%' : '0%');
     readout.textContent = chosen ? v : BLANK;
     for (const s of STEPS) {
-      faceEls[s].classList.toggle('on', chosen && s === v);
       tickEls[s].classList.toggle('on', chosen && s === v);
     }
   }

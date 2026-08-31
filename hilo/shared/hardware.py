@@ -35,16 +35,21 @@ NUM_RANDOM       = 3
 
 # Objectives
 NUM_OBJECTIVES   = 2
-COMFORT          = 'Comfort'
+PUSH             = 'Push Intensity'
 METABOLIC        = 'Metabolic Cost'
-REPEATS          = {METABOLIC: 1, COMFORT: 4}
-MAXIMIZE         = {METABOLIC: False, COMFORT: True}
+REPEATS          = {METABOLIC: 1, PUSH: 4}
+# push intensity is a magnitude, not a preference: the subject rates how hard
+# the exo pushes, and the run trades that off against metabolic cost rather
+# than driving it to either end on its own
+MAXIMIZE         = {METABOLIC: False, PUSH: False}
 SURVEY_TIMEOUT   = 30.0 
 SURVEY_PERIOD    = 30.0
 METABOLIC_PERIOD = 120.0
+# push intensity spans the survey's own 1 - 5 scale; minimized, so the
+# reference sits past the top of it, which is the worst rating that still counts
 REF_POINT        = plr.reference_point(
-    bounds   = [[3.0, -1.0], [6.0, 5.0]],
-    maximize = [MAXIMIZE[METABOLIC], MAXIMIZE[COMFORT]],
+    bounds   = [[3.0, 1.0], [6.0, 5.0]],
+    maximize = [MAXIMIZE[METABOLIC], MAXIMIZE[PUSH]],
     margin   = 0.1
 )
 
@@ -90,10 +95,10 @@ def make_probes_mo(ipad: Survey, multithread=False):
             separate_thread   = multithread
         ),
         plr.Probe(
-            name              = COMFORT,
+            name              = PUSH,
             caller            = ipad.ask,
-            repeats           = REPEATS[COMFORT],
-            obj_name          = COMFORT,
+            repeats           = REPEATS[PUSH],
+            obj_name          = PUSH,
             separate_thread   = multithread
         ),
     ]
@@ -110,7 +115,7 @@ def make_experiment_mo(
                 maximize      = maximize[name],
                 action_bounds = BOUNDS
             )
-            for name in (METABOLIC, COMFORT)
+            for name in (METABOLIC, PUSH)
         ],
         probes       = probes,
         action_names = ACTION_NAMES

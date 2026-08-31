@@ -229,7 +229,7 @@ def run_experiment(
             device_send_fn = send_to_exo,
             args           = {
                 hilo.METABOLIC: (action, i + 1),
-                hilo.COMFORT:   (action, i + 1, hilo.SURVEY_TIMEOUT, hilo.SURVEY_PERIOD)
+                hilo.PUSH:   (action, i + 1, hilo.SURVEY_TIMEOUT, hilo.SURVEY_PERIOD)
             }
         )
 

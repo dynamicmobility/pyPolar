@@ -10,10 +10,10 @@ MULTITHREAD = False
 
 # Objectives
 NUM_OBJECTIVES   = 2
-COMFORT          = 'Comfort'
+PUSH             = 'Push Intensity'
 METABOLIC        = 'Metabolic Cost'
-REPEATS          = {METABOLIC: 1, COMFORT: 1}
-MAXIMIZE         = {METABOLIC: False, COMFORT: False}
+REPEATS          = {METABOLIC: 1, PUSH: 1}
+MAXIMIZE         = {METABOLIC: False, PUSH: False}
 SURVEY_TIMEOUT   = 0.0
 SURVEY_PERIOD    = 0.0
 METABOLIC_PERIOD = 0.0
@@ -33,7 +33,7 @@ NUM_RANDOM       = 3
 GT_NAME = 'DTLZ1'
 GROUND_TRUTH_PARAMS = plr.SyntheticOracleParams(
     func          = GT_NAME,
-    objectives    = (METABOLIC, COMFORT),
+    objectives    = (METABOLIC, PUSH),
     dim           = 3, #if GT_NAME == 'DTLZ2' else 2,
     box           = None, # mo functions dont take bounds
     seed          = SEED,
@@ -83,10 +83,10 @@ def make_probes_mo(ipad=None, multithread=False):
             separate_thread   = multithread
         ),
         plr.Probe(
-            name              = COMFORT,
+            name              = PUSH,
             caller            = lambda action, trial, timeout, period: MO_TRUTH.objective(1)(action),
-            repeats           = REPEATS[COMFORT],
-            obj_name          = COMFORT,
+            repeats           = REPEATS[PUSH],
+            obj_name          = PUSH,
             separate_thread   = multithread
         )
     ]
@@ -103,7 +103,7 @@ def make_experiment_mo(
                 maximize      = maximize[name],
                 action_bounds = BOUNDS
             )
-            for name in (METABOLIC, COMFORT)
+            for name in (METABOLIC, PUSH)
         ],
         probes       = probes,
         action_names = ACTION_NAMES
